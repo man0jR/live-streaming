@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  nginx-lb:
+    image: nginx
+    ports:
+      - "1935:1935"  # RTMP
+      - "443:443"    # HTTPS
+    configs:
+      - nginx.conf
+
+  media-server:
+    image: custom-media-server
+    scale: 2
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis-data:/data
+
+  monitoring:
+    image: prometheus
+    ports:
+      - "9090:9090"
+
+volumes:
+  redis-data:
+
+configs:
+  nginx.conf:
+    external: true 
