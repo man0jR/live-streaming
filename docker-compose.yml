@@ -1,35 +1,33 @@
-version: '3.8'
+version: '3'
 
 services:
-  nginx-lb:
-    image: nginx
+  media-server:
+    build:
+      context: .
+      dockerfile: apps/media-server/Dockerfile
     ports:
       - "1935:1935"  # RTMP
-      - "443:443"    # HTTPS
-    configs:
-      - nginx.conf
-
-  media-server:
-    image: custom-media-server
-    scale: 2
+      - "8080:8080"  # HTTP (for HLS)
+      - "3001:3001"  # API
     environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:alpine
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - PORT=3001
+      - STREAM_KEY_SECRET=your_secret_here
     volumes:
-      - redis-data:/data
+      - ./apps/media-server/hls:/opt/nginx/hls
+    depends_on:
+      - api
 
-  monitoring:
-    image: prometheus
+  api:
+    image: node:18-alpine
+    working_dir: /app
+    command: npm run serve:media-server-api
     ports:
-      - "9090:9090"
-
-volumes:
-  redis-data:
-
-configs:
-  nginx.conf:
-    external: true 
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - STREAM_KEY_SECRET=your_secret_here
+    volumes:
+      - .:/app 
