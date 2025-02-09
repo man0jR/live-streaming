@@ -1,49 +1,65 @@
-import NxWelcome from './nx-welcome';
-
-import { Route, Routes, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Box, Container, TextField, Button, Typography, Paper } from '@mui/material';
+import { ViewerInterface } from './components/ViewerInterface';
 
 export function App() {
-  return (
-    <div>
-      <NxWelcome title="viewer-ui" />
+  const [streamId, setStreamId] = useState('');
+  const [isWatching, setIsWatching] = useState(false);
 
-      {/* START: routes */}
-      {/* These routes and navigation have been generated for you */}
-      {/* Feel free to move and update them to fit your needs */}
-      <br />
-      <hr />
-      <br />
-      <div role="navigation">
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/page-2">Page 2</Link>
-          </li>
-        </ul>
-      </div>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <div>
-              This is the generated root route.{' '}
-              <Link to="/page-2">Click here for page 2.</Link>
-            </div>
-          }
-        />
-        <Route
-          path="/page-2"
-          element={
-            <div>
-              <Link to="/">Click here to go back to root page.</Link>
-            </div>
-          }
-        />
-      </Routes>
-      {/* END: routes */}
-    </div>
+  const handleWatch = () => {
+    if (streamId.trim()) {
+      setIsWatching(true);
+    }
+  };
+
+  const handleBack = () => {
+    setIsWatching(false);
+    setStreamId('');
+  };
+
+  if (isWatching) {
+    return (
+      <Box sx={{ height: '100vh', bgcolor: 'background.default' }}>
+        <Button 
+          onClick={handleBack}
+          sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1 }}
+        >
+          Back to Home
+        </Button>
+        <ViewerInterface streamId={streamId} />
+      </Box>
+    );
+  }
+
+  return (
+    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
+      <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+        <Typography variant="h4" gutterBottom align="center">
+          Live Stream Viewer
+        </Typography>
+        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleWatch(); }}>
+          <TextField
+            fullWidth
+            label="Enter Stream ID"
+            value={streamId}
+            onChange={(e) => setStreamId(e.target.value)}
+            margin="normal"
+            variant="outlined"
+            placeholder="e.g., abc123"
+          />
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={handleWatch}
+            disabled={!streamId.trim()}
+            sx={{ mt: 2 }}
+          >
+            Watch Stream
+          </Button>
+        </Box>
+      </Paper>
+    </Container>
   );
 }
 

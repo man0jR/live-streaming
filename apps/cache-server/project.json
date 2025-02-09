@@ -3,7 +3,6 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/cache-server/src",
   "projectType": "application",
-  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
@@ -40,10 +39,8 @@
     "serve": {
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
       "options": {
-        "buildTarget": "cache-server:build",
-        "runBuildTargetDependencies": false
+        "buildTarget": "cache-server:build"
       },
       "configurations": {
         "development": {
@@ -59,5 +56,6 @@
         "passWithNoTests": true
       }
     }
-  }
+  },
+  "tags": []
 }

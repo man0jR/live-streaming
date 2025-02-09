@@ -8,57 +8,65 @@ interface Stream {
   userId: string;
   startedAt: Date;
   isActive: boolean;
-  clientType: string;
+  viewerCount: number;
+  lastPing: Date;
 }
 
-interface StreamResponse {
-  streamId: string;
-  streamKey: string;
-  rtmpUrl: string;
-  wsUrl?: string;
-  playbackUrl: string;
+interface StreamStats {
+  viewerCount: number;
+  duration: number;
+  bitrate: number;
 }
 
-// In-memory store for active streams (replace with a database in production)
 const activeStreams = new Map<string, Stream>();
 
+// Clean up inactive streams periodically
+setInterval(() => {
+  const now = new Date();
+  for (const [streamId, stream] of activeStreams.entries()) {
+    // If no ping received in last 30 seconds, consider stream inactive
+    if (now.getTime() - stream.lastPing.getTime() > 30000) {
+      activeStreams.delete(streamId);
+    }
+  }
+}, 10000);
+
 export const startStream = (req: Request, res: Response) => {
-  const { userId, clientType = 'browser' } = req.body;
+  const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'userId is required' });
   }
 
-  const streamId = uuidv4();
-  const streamKey = createHash('sha256')
-    .update(streamId + process.env.STREAM_KEY_SECRET)
-    .digest('hex')
-    .substring(0, 16);
+  try {
+    const streamId = uuidv4();
+    const streamKey = createHash('sha256')
+      .update(streamId + process.env.STREAM_KEY_SECRET)
+      .digest('hex')
+      .substring(0, 16);
 
-  const stream: Stream = {
-    id: streamId,
-    streamKey,
-    userId,
-    startedAt: new Date(),
-    isActive: true,
-    clientType,
-  };
+    const stream: Stream = {
+      id: streamId,
+      streamKey,
+      userId,
+      startedAt: new Date(),
+      isActive: true,
+      viewerCount: 0,
+      lastPing: new Date()
+    };
 
-  activeStreams.set(streamId, stream);
+    activeStreams.set(streamId, stream);
 
-  const response: StreamResponse = {
-    streamId,
-    streamKey,
-    rtmpUrl: `rtmp://${process.env.MEDIA_SERVER_HOST || 'localhost'}:1935/live/${streamKey}`,
-    playbackUrl: `http://${process.env.MEDIA_SERVER_HOST || 'localhost'}:8080/live/${streamKey}/index.m3u8`,
-  };
-
-  // Add WebSocket URL for browser-based streaming
-  if (clientType === 'browser') {
-    response.wsUrl = `ws://${process.env.MEDIA_SERVER_HOST || 'localhost'}:8080/ws/${streamKey}`;
+    res.json({
+      streamId,
+      streamKey,
+      rtmpUrl: `rtmp://${process.env.MEDIA_SERVER_HOST || 'localhost'}:1935/live/${streamKey}`,
+      playbackUrl: `http://${process.env.MEDIA_SERVER_HOST || 'localhost'}:8080/live/${streamKey}/index.m3u8`,
+    });
+  } catch (error) {
+    console.error('Error starting stream:', error);
+    res.status(500).json({ error: 'Failed to start stream' });
   }
-
-  res.json(response);
 };
 
 export const endStream = (req: Request, res: Response) => {
@@ -69,10 +77,43 @@ export const endStream = (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Stream not found' });
   }
 
-  stream.isActive = false;
-  activeStreams.delete(streamId);
+  try {
+    stream.isActive = false;
+    activeStreams.delete(streamId);
+    res.json({ message: 'Stream ended successfully' });
+  } catch (error) {
+    console.error('Error ending stream:', error);
+    res.status(500).json({ error: 'Failed to end stream' });
+  }
+};
 
-  res.json({ message: 'Stream ended successfully' });
+export const keepAlive = (req: Request, res: Response) => {
+  const { streamId } = req.params;
+  const stream = activeStreams.get(streamId);
+
+  if (!stream) {
+    return res.status(404).json({ error: 'Stream not found' });
+  }
+
+  stream.lastPing = new Date();
+  res.json({ status: 'ok' });
+};
+
+export const getStreamStats = (req: Request, res: Response) => {
+  const { streamId } = req.params;
+  const stream = activeStreams.get(streamId);
+
+  if (!stream) {
+    return res.status(404).json({ error: 'Stream not found' });
+  }
+
+  const stats: StreamStats = {
+    viewerCount: stream.viewerCount,
+    duration: (new Date().getTime() - stream.startedAt.getTime()) / 1000,
+    bitrate: 0 // To be implemented with actual bitrate monitoring
+  };
+
+  res.json(stats);
 };
 
 export const verifyStreamKey = (req: Request, res: Response) => {
