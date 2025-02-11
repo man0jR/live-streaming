@@ -16,26 +16,11 @@ services:
       - STREAM_KEY_SECRET=your_secret_here
     volumes:
       - ./apps/media-server/hls:/opt/nginx/hls
-    depends_on:
-      - api
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  api:
-    image: node:18-alpine
-    working_dir: /app
-    command: npm run serve:media-server-api
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - STREAM_KEY_SECRET=your_secret_here
-    volumes:
-      - .:/app 
 
   cache-server:
     build:

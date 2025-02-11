@@ -38,20 +38,11 @@
       }
     },
     "serve": {
-      "executor": "@nx/js:node",
-      "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "media-server:build",
-        "runBuildTargetDependencies": false
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "media-server:build:development"
-        },
-        "production": {
-          "buildTarget": "media-server:build:production"
-        }
+        "commands": [
+          "docker-compose up media-server --build"
+        ]
       }
     },
     "test": {

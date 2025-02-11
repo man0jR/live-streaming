@@ -19,6 +19,7 @@ const streamManager = new StreamManager();
 
 // Handle WebSocket connections
 wss.on('connection', (ws, req) => {
+  console.log('Websocket Connection received');
   const streamId = req.url?.split('/').pop();
   if (!streamId) {
     ws.close();
@@ -33,7 +34,7 @@ app.post('/api/streams/start', (req, res) => {
   const streamId = `stream-${Date.now()}`;
   const wsUrl = `ws://localhost:${port}/stream/${streamId}`;
   const rtmpUrl = `rtmp://localhost/live/${streamId}`;
-
+  console.log('API Request received');
   res.json({
     streamId,
     wsUrl,

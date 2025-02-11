@@ -76,7 +76,7 @@ export const StreamerInterface = ({ onCancel }: StreamerInterfaceProps) => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
+          // deviceId: deviceId ? { exact: deviceId } : undefined,
           width: { ideal: videoQuality.width },
           height: { ideal: videoQuality.height },
           frameRate: { ideal: videoQuality.frameRate }
@@ -88,7 +88,16 @@ export const StreamerInterface = ({ onCancel }: StreamerInterfaceProps) => {
       }
       setStream(mediaStream);
       setIsVideoEnabled(true);
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'OverconstrainedError') {
+        // OverconstrainedError has a constraint property but TS doesn't know about it
+        const overconstrainedError = error as { constraint: string };
+        console.error('Constraints not satisfied:', overconstrainedError.constraint);
+        console.error(deviceId);
+        // Display a message to the user explaining the issue
+      } else {
+        console.error('getUserMedia error:', error);
+      }
       console.error('Error accessing media devices:', error);
     }
   }, [isAudioEnabled, selectedAudioDevice, videoQuality]);
@@ -103,7 +112,7 @@ export const StreamerInterface = ({ onCancel }: StreamerInterfaceProps) => {
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            deviceId: deviceId ? { exact: deviceId } : undefined
+            // deviceId: deviceId ? { exact: deviceId } : undefined
           },
         });
         if (stream) {
@@ -166,14 +175,14 @@ export const StreamerInterface = ({ onCancel }: StreamerInterfaceProps) => {
         userId: 'test-user-id',
         clientType: 'browser'
       });
-
+      console.log(response);
       const details: StreamDetails = response.data;
       setStreamDetails(details);
 
       if (!details.wsUrl) {
         throw new Error('WebSocket URL not provided');
       }
-
+      
       // Create WebSocket connection
       const ws = new WebSocket(details.wsUrl);
       wsRef.current = ws;

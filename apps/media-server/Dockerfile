@@ -1,5 +1,5 @@
 # Build stage for Node.js app
-FROM node:18-alpine as builder
+FROM node:20-alpine as builder
 
 WORKDIR /app
 COPY . .
@@ -7,50 +7,42 @@ COPY . .
 RUN npm ci
 RUN npx nx build media-server
 
-# Final stage with Nginx-RTMP and FFmpeg
+# Final stage
 FROM alpine:3.18
 
-# Install dependencies including FFmpeg
+# Install only necessary dependencies
 RUN apk add --no-cache \
-    build-base \
-    pcre-dev \
-    openssl-dev \
-    zlib-dev \
-    linux-headers \
-    wget \
-    git \
     nodejs \
     npm \
-    ffmpeg
+    ffmpeg \
+    netcat-openbsd \
+    nginx \
+    nginx-mod-rtmp \
+    nginx-mod-stream && \
+    mkdir -p /etc/nginx/modules && \
+    ln -sf /usr/lib/nginx/modules/ngx_rtmp_module.so /etc/nginx/modules/ && \
+    ln -sf /usr/lib/nginx/modules/ngx_stream_module.so /etc/nginx/modules/
 
-# Download and build Nginx with RTMP module
-ARG NGINX_VERSION=1.24.0
-RUN wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
-    tar zxf nginx-${NGINX_VERSION}.tar.gz && \
-    rm nginx-${NGINX_VERSION}.tar.gz && \
-    git clone https://github.com/arut/nginx-rtmp-module.git && \
-    cd nginx-${NGINX_VERSION} && \
-    ./configure \
-        --prefix=/opt/nginx \
-        --with-http_ssl_module \
-        --add-module=../nginx-rtmp-module && \
-    make && \
-    make install && \
-    rm -rf /var/cache/apk/* nginx-${NGINX_VERSION} nginx-rtmp-module
+# Create directories and symlink logs
+RUN mkdir -p /var/lib/nginx/hls && \
+    mkdir -p /var/log/nginx && \
+    ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log && \
+    chown -R nginx:nginx /var/lib/nginx
 
-# Create directories for HLS and dash streaming
-RUN mkdir -p /opt/nginx/hls && \
-    mkdir -p /opt/nginx/dash && \
-    ln -sf /dev/stdout /opt/nginx/logs/access.log && \
-    ln -sf /dev/stderr /opt/nginx/logs/error.log
-
-# Copy built Node.js app
+# Copy built Node.js app and install production dependencies
 COPY --from=builder /app/dist/apps/media-server /app
-COPY apps/media-server/config/nginx.conf /etc/nginx/nginx.conf
+COPY package*.json /app/
+WORKDIR /app
+RUN npm ci --only=production
+
+# Copy nginx configs
+COPY apps/media-server/nginx/rtmp.conf /etc/nginx/nginx.conf
+COPY apps/media-server/nginx/http.conf /etc/nginx/http.d/default.conf
 
 EXPOSE 1935 8080 3001
 
-# Start script
+# Copy and set up start script
 COPY apps/media-server/start.sh /start.sh
 RUN chmod +x /start.sh
 

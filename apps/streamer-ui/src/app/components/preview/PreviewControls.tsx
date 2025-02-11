@@ -49,13 +49,15 @@ export const PreviewControls = ({
 
   const loadDevices = useCallback(async () => {
     try {
-      // Request permission to access devices
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // // Request permission to access devices
+      // const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       
-      // Stop the temporary stream
-      stream.getTracks().forEach(track => track.stop());
+      // // Stop the temporary stream
+      // stream.getTracks().forEach(track => track.stop());
       
       const devices = await navigator.mediaDevices.enumerateDevices();
+
+      console.log(devices);
       
       const videoInputs = devices
         .filter(device => device.kind === 'videoinput')
@@ -116,7 +118,7 @@ export const PreviewControls = ({
         <Select
           value={selectedVideo}
           onChange={(e) => handleVideoDeviceChange(e.target.value)}
-          disabled={!isVideoEnabled}
+          // disabled={!isVideoEnabled}
         >
           {videoDevices.map((device) => (
             <MenuItem key={device.deviceId} value={device.deviceId}>
@@ -131,7 +133,7 @@ export const PreviewControls = ({
         <Select
           value={selectedAudio}
           onChange={(e) => handleAudioDeviceChange(e.target.value)}
-          disabled={!isAudioEnabled}
+          // disabled={!isAudioEnabled}
         >
           {audioDevices.map((device) => (
             <MenuItem key={device.deviceId} value={device.deviceId}>
